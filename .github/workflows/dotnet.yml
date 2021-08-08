@@ -1,0 +1,54 @@
+name: .NET
+
+on:
+  push:
+    branches: [ main ]
+    
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+        
+     # Add NuGet Sources
+
+    - name: Create Local NuGet Directory
+      run: mkdir ~/nuget
+
+    - name: Add Local Nuget Source
+      run: dotnet nuget add source ~/nuget
+
+    - name: Add GGroupp NuGet Source
+      run: dotnet nuget add source ${{ secrets.GGROUPP_NUGET_SOURCE_URL }} -n ggroupp -u ${{ secrets.GGROUPP_NUGET_SOURCE_USER_NAME }} -p ${{ secrets.GGROUPP_NUGET_SOURCE_USER_PASSWORD }} --store-password-in-clear-text
+
+    # NumberInWords
+    
+    - name: Restore NumberInWords
+      run: dotnet restore ./src/*/NumberInWords.csproj
+
+    - name: Build NumberInWords
+      run: dotnet build ./src/*/NumberInWords.csproj --no-restore  -c Release
+
+    - name: Pack NumberInWords
+      run: dotnet pack ./src/*/NumberInWords.csproj --no-restore -o ~/nuget  -c Release
+      
+    - name: Restore NumberInWords.Tests
+      run: dotnet restore ./src/*/NumberInWords.Tests.csproj
+
+    - name: Test NumberInWords.Tests
+      run: dotnet test ./src/*/NumberInWords.Tests.csproj --no-restore  -c Release
+      
+    # Push
+      
+    - name: Push Packages
+      if: ${{ github.event_name == 'push' }}
+      run: dotnet nuget push "../../../nuget/*.nupkg" -s ${{ secrets.GGROUPP_NUGET_SOURCE_URL }} -k ${{ secrets.GGROUPP_NUGET_SOURCE_USER_PASSWORD }} --skip-duplicate
