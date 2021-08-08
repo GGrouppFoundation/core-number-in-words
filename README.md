@@ -1,1 +1,1 @@
-# ggroupp-core-number-in-words
+# core-number-in-words
